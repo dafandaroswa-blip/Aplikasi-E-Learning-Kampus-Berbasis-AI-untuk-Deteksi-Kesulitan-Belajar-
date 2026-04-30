@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengaturan Threshold • LearnSona</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --p3-bg: #060b14;
+            --p3-card: #0f1b2e;
+            --p3-border: #1e3a5f;
+            --p3-blue: #4d9fff;
+            --p3-cyan: #00c8ff;
+            --p3-white: #e8f0ff;
+            --p3-gray: #8ea4c2;
+            --p3-green: #00e676;
+            --p3-yellow: #ffb300;
+            --p3-red: #ff1744;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% 0%, #0d1b33, #060b14 70%);
+            color: var(--p3-white);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 28px;
+        }
+        .container {
+            width: 100%;
+            max-width: 520px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--p3-cyan);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .card {
+            background: var(--p3-card);
+            border: 1px solid var(--p3-border);
+            padding: 32px;
+            clip-path: polygon(1% 0%, 100% 0%, 100% 97%, 99% 100%, 0% 100%, 0% 3%);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+        }
+        h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: var(--p3-gray);
+            margin-bottom: 24px;
+        }
+        .threshold-item {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: rgba(255,255,255,0.03);
+            border-left: 4px solid var(--p3-border);
+            border-radius: 0 6px 6px 0;
+        }
+        .threshold-item.aman { border-left-color: var(--p3-green); }
+        .threshold-item.waspada { border-left-color: var(--p3-yellow); }
+        .threshold-item.kritis { border-left-color: var(--p3-red); }
+        .threshold-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .threshold-label {
+            font-weight: 600;
+            font-size: 15px;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 8px 0;
+            accent-color: var(--p3-blue);
+        }
+        input[type="number"] {
+            width: 70px;
+            padding: 8px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--p3-border);
+            color: var(--p3-white);
+            border-radius: 4px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .range-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .range-row input[type="range"] {
+            flex: 1;
+        }
+        .description {
+            font-size: 12px;
+            color: var(--p3-gray);
+            margin-top: 4px;
+        }
+        .btn {
+            background: var(--p3-blue);
+            color: #000;
+            border: none;
+            padding: 14px 28px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            clip-path: polygon(3% 0%, 100% 0%, 100% 80%, 97% 100%, 0% 100%, 0% 20%);
+            transition: 0.2s;
+            width: 100%;
+            margin-top: 8px;
+        }
+        .btn:hover {
+            background: var(--p3-cyan);
+            box-shadow: 0 0 25px rgba(0,200,255,0.5);
+        }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="dashboard-dosen.html" class="back-link">← Kembali ke Dashboard</a>
+        <div class="card">
+            <h2>⚙️ Threshold Risiko</h2>
+            <p class="subtitle">Atur ambang batas untuk menentukan status risiko mahasiswa berdasarkan progress belajar.</p>
+            
+            <div class="threshold-item aman">
+                <div class="threshold-header">
+                    <span class="threshold-label">🟢 Aman</span>
+                    <input type="number" id="aman" min="0" max="100" value="70">
+                </div>
+                <div class="range-row">
+                    <span>0</span>
+                    <input type="range" id="amanRange" min="0" max="100" value="70" oninput="syncInput('aman', this.value)">
+                    <span>100</span>
+                </div>
+                <p class="description">Mahasiswa dengan progress ≥ nilai ini dianggap Aman.</p>
+            </div>
+
+            <div class="threshold-item waspada">
+                <div class="threshold-header">
+                    <span class="threshold-label">🟡 Waspada</span>
+                    <input type="number" id="waspada" min="0" max="100" value="50">
+                </div>
+                <div class="range-row">
+                    <span>0</span>
+                    <input type="range" id="waspadaRange" min="0" max="100" value="50" oninput="syncInput('waspada', this.value)">
+                    <span>100</span>
+                </div>
+                <p class="description">Progress di bawah nilai ini (tapi di atas Kritis) dianggap Waspada.</p>
+            </div>
+
+            <div class="threshold-item kritis">
+                <div class="threshold-header">
+                    <span class="threshold-label">🔴 Kritis</span>
+                    <input type="number" id="kritis" min="0" max="100" value="30">
+                </div>
+                <div class="range-row">
+                    <span>0</span>
+                    <input type="range" id="kritisRange" min="0" max="100" value="30" oninput="syncInput('kritis', this.value)">
+                    <span>100</span>
+                </div>
+                <p class="description">Progress di bawah nilai ini (dengan syarat login & nilai rendah) dianggap Kritis.</p>
+            </div>
+
+            <button class="btn" onclick="saveThreshold()">Simpan Threshold</button>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="lms-core.js"></script>
+    <script>
+        if (!isLoggedIn()) {
+            window.location.href = 'login.html';
+        }
+
+        // Sync slider dengan number input
+        window.syncInput = function(id, value) {
+            document.getElementById(id).value = value;
+            document.getElementById(id + 'Range').value = value;
+        };
+
+        // Sync number input dengan slider
+        function bindInputs(id) {
+            const numInput = document.getElementById(id);
+            const rangeInput = document.getElementById(id + 'Range');
+            numInput.addEventListener('input', () => {
+                rangeInput.value = numInput.value;
+            });
+        }
+
+        async function init() {
+            try {
+                const settings = await getSettings();
+                const thresholds = settings.riskThreshold || { aman: 70, waspada: 50, kritis: 30 };
+                document.getElementById('aman').value = thresholds.aman;
+                document.getElementById('amanRange').value = thresholds.aman;
+                document.getElementById('waspada').value = thresholds.waspada;
+                document.getElementById('waspadaRange').value = thresholds.waspada;
+                document.getElementById('kritis').value = thresholds.kritis;
+                document.getElementById('kritisRange').value = thresholds.kritis;
+
+                bindInputs('aman');
+                bindInputs('waspada');
+                bindInputs('kritis');
+            } catch (e) {
+                console.error(e);
+                showToast('Gagal memuat threshold.', 'error');
+            }
+        }
+
+        window.saveThreshold = async function() {
+            const aman = parseInt(document.getElementById('aman').value);
+            const waspada = parseInt(document.getElementById('waspada').value);
+            const kritis = parseInt(document.getElementById('kritis').value);
+
+            if (isNaN(aman) || isNaN(waspada) || isNaN(kritis)) {
+                showToast('Semua nilai harus angka.', 'error');
+                return;
+            }
+            if (aman <= waspada || waspada <= kritis) {
+                showToast('Urutan harus: Aman > Waspada > Kritis.', 'error');
+                return;
+            }
+
+            try {
+                await updateThreshold({ aman, waspada, kritis });
+                showToast('Threshold berhasil disimpan!', 'success');
+            } catch (e) {
+                console.error(e);
+                showToast('Gagal menyimpan threshold.', 'error');
+            }
+        };
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? '#00e676' : type === 'error' ? '#ff1744' : '#4d9fff';
+            toast.style.cssText = `
+                background: ${bgColor};
+                color: #000;
+                padding: 12px 20px;
+                margin-bottom: 8px;
+                font-weight: 500;
+                clip-path: polygon(3% 0%, 100% 0%, 100% 80%, 97% 100%, 0% 100%, 0% 20%);
+                animation: slideIn 0.3s ease;
+            `;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        init();
+    </script>
+</body>
+</html>

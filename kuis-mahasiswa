@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kerjakan Kuis • LearnSona</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --p3-bg: #060b14;
+            --p3-card: #0f1b2e;
+            --p3-border: #1e3a5f;
+            --p3-blue: #4d9fff;
+            --p3-cyan: #00c8ff;
+            --p3-white: #e8f0ff;
+            --p3-gray: #8ea4c2;
+            --p3-green: #00e676;
+            --p3-red: #ff1744;
+            --p3-yellow: #ffb300;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% 0%, #0d1b33, #060b14 70%);
+            color: var(--p3-white);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 28px;
+        }
+        .quiz-wrapper {
+            background: var(--p3-card);
+            border: 1px solid var(--p3-border);
+            padding: 32px;
+            max-width: 700px;
+            width: 100%;
+            clip-path: polygon(1% 0%, 100% 0%, 100% 97%, 99% 100%, 0% 100%, 0% 3%);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--p3-cyan);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .quiz-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .quiz-meta {
+            font-size: 14px;
+            color: var(--p3-gray);
+            margin-bottom: 24px;
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        .progress-bar {
+            height: 6px;
+            background: #1e2a3a;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--p3-blue);
+            transition: width 0.3s;
+        }
+        .question-block {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--p3-border);
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .question-text {
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .option:hover {
+            background: rgba(77, 159, 255, 0.1);
+        }
+        .option input[type="radio"] {
+            accent-color: var(--p3-blue);
+            width: 16px;
+            height: 16px;
+        }
+        .option.selected {
+            border-color: var(--p3-blue);
+            background: rgba(77, 159, 255, 0.15);
+        }
+        .btn {
+            background: var(--p3-blue);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            clip-path: polygon(3% 0%, 100% 0%, 100% 80%, 97% 100%, 0% 100%, 0% 20%);
+            transition: 0.2s;
+        }
+        .btn:hover {
+            background: var(--p3-cyan);
+            box-shadow: 0 0 20px rgba(0, 200, 255, 0.5);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--p3-blue);
+            color: var(--p3-blue);
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .result-card {
+            text-align: center;
+            padding: 20px;
+        }
+        .score-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 6px solid var(--p3-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+        }
+        @media (max-width: 600px) {
+            .quiz-wrapper {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="toastContainer" style="position:fixed; top:20px; right:20px; z-index:2000;"></div>
+    <div class="quiz-wrapper" id="quizContainer">
+        <p style="text-align:center;">Memuat kuis...</p>
+    </div>
+
+    <script src="lms-core.js"></script>
+    <script>
+        if (!isLoggedIn()) {
+            window.location.href = 'login.html';
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const quizId = urlParams.get('id');
+        if (!quizId) {
+            window.location.href = 'dashboard-mahasiswa.html';
+        }
+
+        let quiz = null;
+        let answers = {};
+
+        (async function init() {
+            try {
+                quiz = await getQuizById(quizId);
+                if (!quiz) {
+                    document.getElementById('quizContainer').innerHTML = '<p style="text-align:center;">Kuis tidak ditemukan.</p>';
+                    return;
+                }
+                renderQuiz();
+            } catch (error) {
+                console.error(error);
+                document.getElementById('quizContainer').innerHTML = '<p style="text-align:center;">Gagal memuat kuis.</p>';
+            }
+        })();
+
+        function renderQuiz() {
+            const container = document.getElementById('quizContainer');
+            const totalQuestions = quiz.questions.length;
+            container.innerHTML = `
+                <a href="dashboard-mahasiswa.html" class="back-link">← Kembali ke Dashboard</a>
+                <h2 class="quiz-title">${escapeHtml(quiz.title)}</h2>
+                <div class="quiz-meta">
+                    <span>📝 ${totalQuestions} Soal</span>
+                    <span>⏱️ Waktu: Tidak terbatas</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%;"></div></div>
+                <form id="quizForm">
+                    ${quiz.questions.map((q, idx) => `
+                        <div class="question-block">
+                            <p class="question-text">${idx+1}. ${escapeHtml(q.question)}</p>
+                            ${q.options.map((opt, optIdx) => {
+                                const letter = String.fromCharCode(65 + optIdx);
+                                return `
+                                    <label class="option" onclick="this.classList.add('selected'); document.getElementById('radio-${idx}-${optIdx}').checked = true;">
+                                        <input type="radio" name="q${idx}" value="${letter}" id="radio-${idx}-${optIdx}">
+                                        <span>${letter}. ${escapeHtml(opt)}</span>
+                                    </label>
+                                `;
+                            }).join('')}
+                        </div>
+                    `).join('')}
+                    <div style="display:flex; gap:12px; justify-content:space-between; margin-top:20px;">
+                        <button type="button" class="btn-outline" onclick="clearAnswers()">Reset Jawaban</button>
+                        <button type="button" class="btn" id="submitBtn" onclick="submitQuiz()">Kirim Jawaban</button>
+                    </div>
+                </form>
+            `;
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const total = quiz.questions.length;
+            let answered = 0;
+            for (let i = 0; i < total; i++) {
+                const selected = document.querySelector(`input[name="q${i}"]:checked`);
+                if (selected) answered++;
+            }
+            const percent = (answered / total) * 100;
+            const fill = document.getElementById('progressFill');
+            if (fill) fill.style.width = percent + '%';
+        }
+
+        // Pasang event listener untuk semua radio button
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.type === 'radio') {
+                updateProgress();
+            }
+        });
+
+        window.clearAnswers = function() {
+            document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+            updateProgress();
+        };
+
+        window.submitQuiz = async function() {
+            const total = quiz.questions.length;
+            let correct = 0;
+            const details = [];
+
+            quiz.questions.forEach((q, idx) => {
+                const selected = document.querySelector(`input[name="q${idx}"]:checked`);
+                const userAnswer = selected ? selected.value : '-';
+                const isCorrect = userAnswer === q.answer;
+                if (isCorrect) correct++;
+                details.push({
+                    question: q.question,
+                    userAnswer: userAnswer,
+                    correctAnswer: q.answer,
+                    isCorrect: isCorrect
+                });
+            });
+
+            const score = Math.round((correct / total) * 100);
+
+            try {
+                await submitQuizAttempt(getCurrentUser().studentId, quizId, score);
+                renderResult(score, correct, total, details);
+            } catch (error) {
+                showToast('Gagal menyimpan hasil kuis.', 'error');
+            }
+        };
+
+        function renderResult(score, correct, total, details) {
+            const container = document.getElementById('quizContainer');
+            const status = score >= 70 ? '🎉 Lulus' : score >= 50 ? '⚠️ Perlu Perbaikan' : '❌ Gagal';
+            container.innerHTML = `
+                <a href="dashboard-mahasiswa.html" class="back-link">← Kembali ke Dashboard</a>
+                <div class="result-card">
+                    <h2 style="font-family:'Orbitron';">Hasil Kuis: ${escapeHtml(quiz.title)}</h2>
+                    <div class="score-circle">${score}</div>
+                    <p><strong>${status}</strong></p>
+                    <p>Jawaban benar: ${correct} dari ${total}</p>
+                    <div style="text-align:left; margin-top:20px;">
+                        ${details.map((d, idx) => `
+                            <div style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                                <strong>${idx+1}. ${escapeHtml(d.question)}</strong><br>
+                                Jawaban kamu: <span style="color:${d.isCorrect ? 'var(--p3-green)' : 'var(--p3-red)'}">${d.userAnswer}</span><br>
+                                ${!d.isCorrect ? `Jawaban benar: <span style="color:var(--p3-green)">${d.correctAnswer}</span>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn" style="margin-top:20px;" onclick="location.href='dashboard-mahasiswa.html'">Kembali</button>
+                </div>
+            `;
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? '#00e676' : type === 'error' ? '#ff1744' : '#4d9fff';
+            toast.style.cssText = `
+                background: ${bgColor};
+                color: #000;
+                padding: 12px 20px;
+                margin-bottom: 8px;
+                font-weight: 500;
+                clip-path: polygon(3% 0%, 100% 0%, 100% 80%, 97% 100%, 0% 100%, 0% 20%);
+                animation: slideIn 0.3s ease;
+            `;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

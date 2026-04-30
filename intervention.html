@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intervensi • LearnSona</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --p3-bg: #060b14;
+            --p3-card: #0f1b2e;
+            --p3-border: #1e3a5f;
+            --p3-blue: #4d9fff;
+            --p3-cyan: #00c8ff;
+            --p3-white: #e8f0ff;
+            --p3-gray: #8ea4c2;
+            --p3-green: #00e676;
+            --p3-yellow: #ffb300;
+            --p3-red: #ff1744;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% 0%, #0d1b33, #060b14 70%);
+            color: var(--p3-white);
+            min-height: 100vh;
+            padding: 28px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            color: var(--p3-cyan);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .back-link:hover {
+            color: var(--p3-white);
+        }
+        .page-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            margin-bottom: 28px;
+            letter-spacing: 1px;
+        }
+        .card {
+            background: var(--p3-card);
+            border: 1px solid var(--p3-border);
+            padding: 28px;
+            margin-bottom: 24px;
+            clip-path: polygon(1% 0%, 100% 0%, 100% 97%, 99% 100%, 0% 100%, 0% 3%);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+        }
+        .card h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--p3-gray);
+            margin-bottom: 6px;
+            margin-top: 12px;
+        }
+        select, textarea {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--p3-border);
+            color: var(--p3-white);
+            font-size: 14px;
+            border-radius: 4px;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        select:focus, textarea:focus {
+            border-color: var(--p3-cyan);
+            box-shadow: 0 0 12px rgba(0, 200, 255, 0.2);
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .btn {
+            background: var(--p3-blue);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            clip-path: polygon(3% 0%, 100% 0%, 100% 80%, 97% 100%, 0% 100%, 0% 20%);
+            transition: 0.2s;
+            margin-top: 16px;
+        }
+        .btn:hover {
+            background: var(--p3-cyan);
+            box-shadow: 0 0 20px rgba(0, 200, 255, 0.5);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--p3-blue);
+            color: var(--p3-blue);
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+        .btn-outline:hover {
+            background: rgba(77, 159, 255, 0.15);
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            clip-path: polygon(5% 0%, 95% 0%, 100% 30%, 100% 70%, 95% 100%, 5% 100%, 0% 70%, 0% 30%);
+        }
+        .badge.aman { background: var(--p3-green); color: #000; }
+        .badge.waspada { background: var(--p3-yellow); color: #000; }
+        .badge.kritis { background: var(--p3-red); color: #fff; animation: pulse-warning 1.5s infinite; }
+        @keyframes pulse-warning {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .history-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid var(--p3-blue);
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        .history-item strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+        .history-item small {
+            color: var(--p3-gray);
+        }
+        .student-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .risk-indicator {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .risk-indicator span {
+            font-size: 12px;
+            background: rgba(255, 174, 68, 0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: var(--p3-yellow);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Tombol Kembali -->
+        <a href="dashboard-dosen.html" class="back-link">← Kembali ke Dashboard Dosen</a>
+        <h1 class="page-title">🛠️ Intervensi Mahasiswa</h1>
+
+        <!-- Form Intervensi -->
+        <div class="card">
+            <h3>Form Intervensi</h3>
+            <label for="studentSelect">Pilih Mahasiswa</label>
+            <select id="studentSelect">
+                <option value="">-- Pilih Mahasiswa --</option>
+            </select>
+            <div id="studentDetail" style="margin-top:8px; font-size:14px; color:var(--p3-gray);"></div>
+
+            <label for="actionSelect">Tindakan</label>
+            <select id="actionSelect">
+                <option value="Kirim Pesan">Kirim Pesan Peringatan</option>
+                <option value="Remedial">Remedial / Tugas Tambahan</option>
+                <option value="Konsultasi">Jadwalkan Konsultasi</option>
+            </select>
+
+            <label for="notes">Catatan Dosen</label>
+            <textarea id="notes" placeholder="Tulis catatan atau instruksi untuk mahasiswa..."></textarea>
+
+            <button class="btn" onclick="submitIntervention()">Simpan Intervensi</button>
+        </div>
+
+        <!-- Riwayat Intervensi -->
+        <div class="card">
+            <h3>📋 Riwayat Intervensi</h3>
+            <div id="history">Memuat riwayat...</div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toastContainer" style="position:fixed; top:20px; right:20px; z-index:2000;"></div>
+
+    <script src="lms-core.js"></script>
+    <script>
+        // Proteksi halaman
+        if (!requireRole('dosen')) {} // redirect handled
+
+        let allStudents = [];
+
+        async function init() {
+            try {
+                allStudents = await getStudents();
+                populateStudentSelect();
+                await loadHistory();
+
+                // Event saat pilih mahasiswa berubah
+                document.getElementById('studentSelect').addEventListener('change', onStudentChange);
+            } catch (error) {
+                console.error('Error loading intervention page:', error);
+                showToast('Gagal memuat data.', 'error');
+            }
+        }
+
+        function populateStudentSelect() {
+            const select = document.getElementById('studentSelect');
+            select.innerHTML = '<option value="">-- Pilih Mahasiswa --</option>' +
+                allStudents.map(s => `<option value="${s.id}">${escapeHtml(s.name)} (${escapeHtml(s.id)}) - ${s.riskStatus || 'Aman'}</option>`).join('');
+        }
+
+        function onStudentChange() {
+            const studentId = document.getElementById('studentSelect').value;
+            const detailDiv = document.getElementById('studentDetail');
+            if (!studentId) {
+                detailDiv.innerHTML = '';
+                return;
+            }
+            const student = allStudents.find(s => s.id === studentId);
+            if (!student) {
+                detailDiv.innerHTML = '';
+                return;
+            }
+            const risk = calculateRisk(student);
+            detailDiv.innerHTML = `
+                <div class="student-info">
+                    <span><strong>Kelas:</strong> ${escapeHtml(student.class || 'Belum ditentukan')}</span>
+                    <span><strong>Progress:</strong> ${student.progress || 0}%</span>
+                    <span><strong>Nilai:</strong> ${student.assignmentScore || 0}</span>
+                    <span><strong>Login:</strong> ${student.loginFrequency || 0}/minggu</span>
+                </div>
+                <div class="risk-indicator">
+                    ${risk.indicators.map(i => `<span>⚠️ ${i.label}</span>`).join('')}
+                </div>
+            `;
+        }
+
+        async function loadHistory() {
+            const interventions = await getInterventions();
+            const container = document.getElementById('history');
+            if (!interventions || interventions.length === 0) {
+                container.innerHTML = '<p style="color:var(--p3-gray);">Belum ada catatan intervensi.</p>';
+                return;
+            }
+            // Urutkan terbaru di atas
+            interventions.sort((a, b) => new Date(b.date) - new Date(a.date));
+            container.innerHTML = interventions.map(i => {
+                return `
+                <div class="history-item">
+                    <strong>📌 ${i.action} untuk ${escapeHtml(i.student_id)}</strong>
+                    <p>${escapeHtml(i.notes)}</p>
+                    <small>Tanggal: ${i.date || '-'}</small>
+                </div>`;
+            }).join('');
+        }
+
+        window.submitIntervention = async () => {
+            const studentId = document.getElementById('studentSelect').value;
+            const action = document.getElementById('actionSelect').value;
+            const notes = document.getElementById('notes').value.trim();
+
+            if (!studentId) {
+                showToast('Silakan pilih mahasiswa.', 'error');
+                return;
+            }
+            if (!notes) {
+                showToast('Catatan tidak boleh kosong.', 'error');
+                return;
+            }
+
+            try {
+                await saveIntervention({ student_id: studentId, action, notes });
+                showToast('Intervensi berhasil disimpan!', 'success');
+                document.getElementById('notes').value = '';
+                // Refresh riwayat
+                await loadHistory();
+            } catch (error) {
+                console.error('Error saving intervention:', error);
+                showToast('Gagal menyimpan intervensi.', 'error');
+            }
+        };
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? '#00e676' : type === 'error' ? '#ff1744' : '#4d9fff';
+            toast.style.cssText = `
+                background: ${bgColor};
+                color: #000;
+                padding: 12px 20px;
+                margin-bottom: 8px;
+                font-weight: 500;
+                clip-path: polygon(3% 0%, 100% 0%, 100% 80%, 97% 100%, 0% 100%, 0% 20%);
+                animation: slideIn 0.3s ease;
+            `;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Tambahkan style animasi
+        const style = document.createElement('style');
+        style.textContent = '@keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }';
+        document.head.appendChild(style);
+
+        // Jalankan
+        init();
+    </script>
+</body>
+</html>

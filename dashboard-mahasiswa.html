@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Mahasiswa • LearnSona</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --p3-bg: #060b14;
+            --p3-card: #0f1b2e;
+            --p3-card-hover: #132238;
+            --p3-border: #1e3a5f;
+            --p3-blue: #4d9fff;
+            --p3-cyan: #00c8ff;
+            --p3-white: #e8f0ff;
+            --p3-gray: #8ea4c2;
+            --p3-dim: #5a7090;
+            --p3-green: #00e676;
+            --p3-yellow: #ffb300;
+            --p3-red: #ff1744;
+            --p3-pink: #ff4081;
+            --radius: 6px;
+            --clip-path: polygon(2% 0%, 100% 0%, 100% 96%, 98% 100%, 0% 100%, 0% 4%);
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--p3-bg);
+            color: var(--p3-white);
+            display: flex;
+            min-height: 100vh;
+        }
+        /* SIDEBAR */
+        .sidebar {
+            width: 260px;
+            background: #080f1c;
+            border-right: 1px solid var(--p3-border);
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            padding: 24px 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            overflow-y: auto;
+        }
+        .sidebar-logo {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 20px;
+            letter-spacing: 2px;
+            color: var(--p3-blue);
+            text-align: center;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--p3-border);
+            margin-bottom: 16px;
+        }
+        .sidebar-nav { flex: 1; padding: 0 12px; }
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            color: var(--p3-gray);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            border-left: 3px solid transparent;
+            transition: var(--transition);
+            margin-bottom: 4px;
+            border-radius: 0 4px 4px 0;
+        }
+        .sidebar-nav a:hover,
+        .sidebar-nav a.active {
+            background: rgba(77, 159, 255, 0.1);
+            color: var(--p3-white);
+            border-left-color: var(--p3-blue);
+        }
+        .sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--p3-border);
+            font-size: 11px;
+            color: var(--p3-dim);
+            text-align: center;
+        }
+        /* MAIN */
+        .main {
+            flex: 1;
+            margin-left: 260px;
+        }
+        .topbar {
+            background: #0b1424;
+            border-bottom: 1px solid var(--p3-border);
+            padding: 16px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(8px);
+        }
+        .topbar h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        .btn {
+            background: var(--p3-blue);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            clip-path: var(--clip-path);
+            transition: var(--transition);
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            background: var(--p3-cyan);
+            box-shadow: 0 0 15px rgba(0, 200, 255, 0.5);
+            transform: translateY(-1px);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--p3-blue);
+            color: var(--p3-blue);
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .btn-outline:hover { background: rgba(77, 159, 255, 0.15); }
+        .btn-danger {
+            background: var(--p3-red);
+            color: #fff;
+        }
+        .content { padding: 28px; }
+        /* CARDS */
+        .card {
+            background: var(--p3-card);
+            border: 1px solid var(--p3-border);
+            padding: 24px;
+            margin-bottom: 20px;
+            clip-path: var(--clip-path);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            transition: var(--transition);
+        }
+        .card:hover { border-color: var(--p3-blue); }
+        .welcome-card {
+            background: linear-gradient(135deg, #0d1b33 0%, #101b30 100%);
+            border: 1px solid var(--p3-border);
+        }
+        .alert-card {
+            border-left: 4px solid var(--p3-red);
+            background: rgba(255, 23, 68, 0.08);
+            animation: pulse-alert 2s infinite;
+        }
+        @keyframes pulse-alert {
+            0%, 100% { border-left-color: var(--p3-red); }
+            50% { border-left-color: #ff6b7a; }
+        }
+        /* BADGES */
+        .badge {
+            display: inline-block;
+            padding: 4px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            clip-path: polygon(5% 0%, 95% 0%, 100% 30%, 100% 70%, 95% 100%, 5% 100%, 0% 70%, 0% 30%);
+        }
+        .badge.aman { background: var(--p3-green); color: #000; }
+        .badge.waspada { background: var(--p3-yellow); color: #000; }
+        .badge.kritis { background: var(--p3-red); color: #fff; animation: pulse-warn 1.5s infinite; }
+        @keyframes pulse-warn {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        /* PROGRESS BAR */
+        .progress-bar {
+            height: 10px;
+            background: #1e2a3a;
+            border-radius: 3px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--p3-blue), var(--p3-cyan));
+            border-radius: 3px;
+            transition: width 0.8s ease;
+        }
+        /* GRID */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        @media (max-width: 1024px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+            .content { padding: 16px; }
+        }
+        /* LOG ACTIVITY */
+        .log-item {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .log-time {
+            font-size: 11px;
+            color: var(--p3-dim);
+            min-width: 50px;
+        }
+        /* RECOMMENDATION */
+        .rec-item {
+            padding: 10px;
+            margin: 6px 0;
+            background: rgba(255,255,255,0.03);
+            border-left: 3px solid var(--p3-cyan);
+        }
+        /* MODAL */
+        .modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-box {
+            background: var(--p3-card);
+            border: 1px solid var(--p3-border);
+            padding: 28px;
+            clip-path: var(--clip-path);
+            max-width: 440px;
+            width: 90%;
+        }
+        select, input {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--p3-border);
+            color: var(--p3-white);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            border-radius: 4px;
+            margin: 6px 0 12px;
+        }
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--p3-cyan);
+            box-shadow: 0 0 8px rgba(0,200,255,0.2);
+        }
+        /* TOAST */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            padding: 12px 20px;
+            font-weight: 500;
+            clip-path: var(--clip-path);
+            animation: slideIn 0.3s ease;
+            margin-bottom: 8px;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast.success { background: var(--p3-green); color: #000; }
+        .toast.error { background: var(--p3-red); color: #fff; }
+        .toast.info { background: var(--p3-blue); color: #000; }
+    </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+    <div class="sidebar-logo">LEARNSONA</div>
+    <nav class="sidebar-nav">
+        <a href="dashboard-mahasiswa.html" class="active">🏠 Dashboard</a>
+        <a href="analytics.html">📈 Analitik Saya</a>
+        <a href="quiz-attempt.html">📝 Kuis Saya</a>
+        <a href="chat.html">🤖 AI Assistant</a>
+    </nav>
+    <div class="sidebar-footer">AI Early Warning System<br>LearnSona v1.0</div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+    <header class="topbar">
+        <h2>Dashboard Mahasiswa</h2>
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <span id="welcomeText" style="font-weight: 500;"></span>
+            <button class="btn btn-danger" onclick="logoutUser()" style="font-size: 12px; padding: 8px 16px;">🚪 Keluar</button>
+        </div>
+    </header>
+    <div class="content" id="dashboardContent"></div>
+</div>
+
+<script src="lms-core.js"></script>
+<script>
+    // Proteksi role
+    if (!requireRole('mahasiswa')) {} // auto-redirect jika bukan mahasiswa
+
+    (async function initDashboard() {
+        const user = getCurrentUser();
+        if (!user || !user.studentId) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Ambil data
+        const student = await getStudentById(user.studentId);
+        if (!student) {
+            document.getElementById('dashboardContent').innerHTML = `
+                <div class="card" style="text-align:center;">
+                    <h2>⚠️ Data Tidak Ditemukan</h2>
+                    <p style="color:var(--p3-gray);">Silakan hubungi administrator.</p>
+                    <button class="btn" onclick="window.location.href='login.html'">Kembali ke Login</button>
+                </div>`;
+            return;
+        }
+
+        // Update absensi login
+        student.loginFrequency = Math.min(5, (student.loginFrequency || 0) + 1);
+        student.lastLogin = new Date().toISOString().split('T')[0];
+        await saveStudent(student);
+
+        // Kalkulasi risiko & lead time
+        const risk = calculateRisk(student);
+        const leadTimeWarning = (student.progress < 30) ? '⚠️ Peringatan: Anda berisiko tertinggal lebih dari 1 minggu!' : '';
+
+        // Data kelas, materi, kuis, log aktivitas
+        const classes = await getClasses();
+        const enrollments = await getEnrollments();
+        const myClassId = enrollments[student.id] || null;
+        const myClass = myClassId ? classes.find(c => c.id === myClassId) : null;
+        const allMaterials = await getMaterials();
+        const myMaterials = myClassId ? allMaterials.filter(m => m.classId === myClassId) : [];
+        const allQuizzes = await getQuizzes();
+        const myQuizzes = myClassId ? allQuizzes.filter(q => q.classId === myClassId) : [];
+        const logs = await getStudentLogs(student.id);
+        const interventions = await getInterventionsForStudent(student.id);
+
+        // Render
+        document.getElementById('welcomeText').textContent = `👋 ${student.name}`;
+        renderFullDashboard(student, risk, leadTimeWarning, myClass, myMaterials, myQuizzes, logs, interventions, classes, enrollments);
+    })();
+
+    async function getStudentLogs(studentId) {
+        // Ambil log aktivitas dari Firebase (atau localStorage)
+        if (useFirebase) {
+            const snap = await db.ref('logs').orderByChild('student_id').equalTo(studentId).limitToLast(10).once('value');
+            return snap.val() ? Object.values(snap.val()).reverse() : [];
+        }
+        return JSON.parse(localStorage.getItem('ls_logs_' + studentId) || '[]').slice(-10).reverse();
+    }
+
+    async function getInterventionsForStudent(studentId) {
+        if (useFirebase) {
+            const snap = await db.ref('interventions').orderByChild('student_id').equalTo(studentId).once('value');
+            return snap.val() ? Object.values(snap.val()) : [];
+        }
+        const all = JSON.parse(localStorage.getItem('ls_interventions') || '[]');
+        return all.filter(i => i.student_id === studentId);
+    }
+
+    function renderFullDashboard(student, risk, leadTimeWarning, myClass, materials, quizzes, logs, interventions, allClasses, enrollments) {
+        const statusClass = risk.status.toLowerCase();
+        const progressPercent = student.progress || 0;
+        const availableClasses = allClasses.filter(c => !enrollments[student.id] || enrollments[student.id] !== c.id);
+
+        // Rekomendasi AI berdasarkan indikator
+        const recommendations = [];
+        risk.indicators.forEach(ind => {
+            if (ind.label.includes('Progress Rendah')) recommendations.push('Tingkatkan waktu belajar, selesaikan modul tertinggal.');
+            if (ind.label.includes('Jarang Login')) recommendations.push('Login lebih rutin (minimal 3x/minggu) untuk memantau materi.');
+            if (ind.label.includes('Nilai Tugas Rendah')) recommendations.push('Kerjakan kuis dan tugas tambahan untuk meningkatkan nilai.');
+        });
+        if (recommendations.length === 0) recommendations.push('Pertahankan performa baik Anda!');
+
+        const html = `
+            <!-- WELCOME & STATUS -->
+            <div class="card welcome-card">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+                    <div>
+                        <h1 style="font-family:'Orbitron',sans-serif; font-size:22px;">${escapeHtml(student.name)}</h1>
+                        <p style="color:var(--p3-gray);">${escapeHtml(student.id)} • ${escapeHtml(student.class || 'Belum ada kelas')}</p>
+                        <p style="font-size:13px; color:var(--p3-dim);">📅 Login terakhir: ${student.lastLogin || '-'}</p>
+                    </div>
+                    <div style="text-align:right;">
+                        <span class="badge ${statusClass}">${risk.status}</span>
+                        <p style="margin-top:6px; font-family:'Orbitron',sans-serif;">Risk Score: <strong>${risk.score}</strong></p>
+                    </div>
+                </div>
+                ${leadTimeWarning ? `<div class="alert-card" style="margin-top:16px; padding:12px; clip-path:var(--clip-path);">
+                    <strong>${leadTimeWarning}</strong>
+                </div>` : ''}
+            </div>
+
+            <!-- GRID UTAMA -->
+            <div class="grid-2">
+                <!-- KOLOM KIRI -->
+                <div>
+                    <!-- PROGRESS -->
+                    <div class="card">
+                        <h3>📊 Progress Belajar</h3>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span>Progress Keseluruhan</span>
+                            <span style="font-weight:700;">${progressPercent}%</span>
+                        </div>
+                        <div class="progress-bar"><div class="progress-fill" style="width:${progressPercent}%;"></div></div>
+                        <div class="grid-3" style="margin-top:16px; text-align:center;">
+                            <div>
+                                <p style="font-size:12px; color:var(--p3-dim);">📝 Nilai</p>
+                                <p style="font-size:20px; font-weight:700;">${student.assignmentScore || 0}</p>
+                            </div>
+                            <div>
+                                <p style="font-size:12px; color:var(--p3-dim);">🔑 Login/Minggu</p>
+                                <p style="font-size:20px; font-weight:700;">${student.loginFrequency || 0}x</p>
+                            </div>
+                            <div>
+                                <p style="font-size:12px; color:var(--p3-dim);">📚 Kelas</p>
+                                <p style="font-size:20px; font-weight:700;">${myClass ? escapeHtml(myClass.name) : '-'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- INDIKATOR RISIKO -->
+                    <div class="card">
+                        <h3>🧠 Indikator Risiko</h3>
+                        ${risk.indicators.map(ind => `
+                            <div style="padding:10px; margin:6px 0; background:rgba(255,255,255,0.03); border-left:3px solid var(--p3-blue);">
+                                <strong>${escapeHtml(ind.label)}</strong><br>
+                                <small style="color:var(--p3-gray);">${escapeHtml(ind.detail)}</small>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- REKOMENDASI AI -->
+                    <div class="card">
+                        <h3>💡 Rekomendasi Tindakan</h3>
+                        ${recommendations.map(rec => `
+                            <div class="rec-item">🔹 ${rec}</div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- KOLOM KANAN -->
+                <div>
+                    <!-- KELAS SAYA -->
+                    <div class="card">
+                        <h3>📚 Kelas Saya</h3>
+                        ${myClass ? `
+                            <p><strong>${escapeHtml(myClass.name)}</strong></p>
+                            <p style="font-size:13px;">📅 ${escapeHtml(myClass.schedule)} | 👨‍🏫 ${escapeHtml(myClass.dosen || 'Dosen')}</p>
+                            <button class="btn-outline" style="margin-top:8px;" onclick="showJoinClassModal()">Ganti Kelas</button>
+                        ` : `
+                            <p style="color:var(--p3-gray);">Anda belum terdaftar di kelas.</p>
+                            ${availableClasses.length > 0 ? '<button class="btn" onclick="showJoinClassModal()">Gabung Kelas</button>' : '<p style="color:var(--p3-red);">Belum ada kelas tersedia.</p>'}
+                        `}
+                    </div>
+
+                    <!-- MATERI -->
+                    <div class="card">
+                        <h3>📄 Materi Terbaru</h3>
+                        ${materials.length > 0 ? materials.slice(0, 5).map(m => `
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                                <span>📄 ${escapeHtml(m.title)}</span>
+                                <small style="color:var(--p3-dim);">${m.uploadDate}</small>
+                            </div>
+                        `).join('') : '<p style="color:var(--p3-gray);">Belum ada materi.</p>'}
+                    </div>
+
+                    <!-- KUIS -->
+                    <div class="card">
+                        <h3>📝 Kuis Tersedia</h3>
+                        ${quizzes.length > 0 ? quizzes.map(q => `
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                                <span>📋 ${escapeHtml(q.title)}</span>
+                                <a href="quiz-attempt.html?id=${q.id}" class="btn-outline" style="font-size:11px; text-decoration:none;">Kerjakan</a>
+                            </div>
+                        `).join('') : '<p style="color:var(--p3-gray);">Belum ada kuis.</p>'}
+                    </div>
+
+                    <!-- LOG AKTIVITAS -->
+                    <div class="card">
+                        <h3>🕒 Aktivitas Terakhir</h3>
+                        ${logs.length > 0 ? logs.slice(0, 5).map(l => `
+                            <div class="log-item">
+                                <span class="log-time">${new Date(l.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})}</span>
+                                <span>${escapeHtml(l.activity || l.message || 'Login')}</span>
+                            </div>
+                        `).join('') : '<p style="color:var(--p3-gray);">Belum ada aktivitas tercatat.</p>'}
+                    </div>
+
+                    <!-- INTERVENSI DARI DOSEN -->
+                    ${interventions.length > 0 ? `
+                    <div class="card" style="border-left:3px solid var(--p3-yellow);">
+                        <h3>🛠️ Intervensi Dosen</h3>
+                        ${interventions.slice(0, 3).map(i => `
+                            <div style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                                <strong>${escapeHtml(i.action)}</strong><br>
+                                <small>${escapeHtml(i.notes)}</small><br>
+                                <small style="color:var(--p3-dim);">📅 ${i.date}</small>
+                            </div>
+                        `).join('')}
+                    </div>` : ''}
+                </div>
+            </div>`;
+
+        document.getElementById('dashboardContent').innerHTML = html;
+
+        // Simpan global
+        window._student = student;
+        window._allClasses = allClasses;
+        window._enrollments = enrollments;
+    }
+
+    // ---------- MODAL GABUNG KELAS ----------
+    window.showJoinClassModal = function() {
+        const student = window._student;
+        const allClasses = window._allClasses;
+        const enrollments = window._enrollments;
+        const available = allClasses.filter(c => !enrollments[student.id] || enrollments[student.id] !== c.id);
+
+        // Hapus modal lama
+        const existing = document.querySelector('.modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-box">
+                <h3 style="font-family:'Orbitron',sans-serif; margin-bottom:16px;">📚 Pilih Kelas</h3>
+                ${available.length > 0 ? `
+                    <select id="classSelect">
+                        <option value="">-- Pilih Kelas --</option>
+                        ${available.map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${escapeHtml(c.schedule)})</option>`).join('')}
+                    </select>
+                    <div style="display:flex; gap:10px; margin-top:16px;">
+                        <button class="btn" onclick="joinClass()">Gabung</button>
+                        <button class="btn-outline" onclick="this.closest('.modal').remove()">Batal</button>
+                    </div>
+                ` : '<p style="color:var(--p3-gray);">Tidak ada kelas lain tersedia.</p>'}
+            </div>`;
+        document.body.appendChild(modal);
+    };
+
+    // ---------- GABUNG KELAS ----------
+    window.joinClass = async function() {
+        const select = document.getElementById('classSelect');
+        if (!select) return;
+        const classId = select.value;
+        if (!classId) {
+            showToast('Silakan pilih kelas.', 'error');
+            return;
+        }
+        try {
+            await enrollStudent(window._student.id, classId);
+            // Log aktivitas
+            await logActivity(window._student.id, `Bergabung ke kelas baru`);
+            const modal = document.querySelector('.modal');
+            if (modal) modal.remove();
+            showToast('Berhasil bergabung ke kelas!', 'success');
+            setTimeout(() => location.reload(), 600);
+        } catch (e) {
+            showToast('Gagal: ' + e.message, 'error');
+        }
+    };
+
+    // ---------- LOG AKTIVITAS ----------
+    async function logActivity(studentId, activity) {
+        const log = { id: 'LOG' + Date.now(), student_id: studentId, activity, timestamp: new Date().toISOString() };
+        if (useFirebase) {
+            await db.ref('logs').push(log);
+        } else {
+            let logs = JSON.parse(localStorage.getItem('ls_logs_' + studentId) || '[]');
+            logs.push(log);
+            localStorage.setItem('ls_logs_' + studentId, JSON.stringify(logs));
+        }
+    }
+
+    // ---------- TOAST ----------
+    function showToast(msg, type = 'info') {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+</script>
+</body>
+</html>

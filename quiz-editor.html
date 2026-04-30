@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buat Kuis • LearnSona</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --p3-bg: #060b14;
+            --p3-card: #0f1b2e;
+            --p3-border: #1e3a5f;
+            --p3-blue: #4d9fff;
+            --p3-cyan: #00c8ff;
+            --p3-white: #e8f0ff;
+            --p3-gray: #8ea4c2;
+            --p3-red: #ff1744;
+            --p3-green: #00e676;
+            --p3-yellow: #ffb300;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% 0%, #0d1b33, #060b14 70%);
+            color: var(--p3-white);
+            min-height: 100vh;
+            padding: 28px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--p3-cyan);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover { color: var(--p3-white); }
+        .card {
+            background: var(--p3-card);
+            border: 1px solid var(--p3-border);
+            padding: 28px;
+            margin-bottom: 24px;
+            clip-path: polygon(1% 0%, 100% 0%, 100% 97%, 99% 100%, 0% 100%, 0% 3%);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        h2, h3 { font-family: 'Orbitron', sans-serif; margin-bottom: 16px; }
+        label {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--p3-gray);
+            margin-bottom: 6px;
+            margin-top: 12px;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--p3-border);
+            color: var(--p3-white);
+            font-size: 14px;
+            border-radius: 4px;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+            margin-bottom: 8px;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--p3-cyan);
+            box-shadow: 0 0 10px rgba(0,200,255,0.2);
+        }
+        .btn {
+            background: var(--p3-blue);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            clip-path: polygon(3% 0%, 100% 0%, 100% 80%, 97% 100%, 0% 100%, 0% 20%);
+            transition: 0.2s;
+        }
+        .btn:hover {
+            background: var(--p3-cyan);
+            box-shadow: 0 0 15px rgba(0,200,255,0.5);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--p3-blue);
+            color: var(--p3-blue);
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .question-block {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--p3-border);
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: 4px;
+            position: relative;
+        }
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .option-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        .option-row input[type="text"] {
+            flex: 1;
+        }
+        .option-row input[type="radio"] {
+            width: auto;
+            margin-right: 4px;
+        }
+        .remove-btn {
+            background: var(--p3-red);
+            border: none;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="dashboard-dosen.html" class="back-link">← Kembali ke Dashboard</a>
+        <div class="card">
+            <h2>📝 Buat Kuis Baru</h2>
+            <label for="classSelect">Pilih Kelas</label>
+            <select id="classSelect"></select>
+
+            <label for="quizTitle">Judul Kuis</label>
+            <input type="text" id="quizTitle" placeholder="Masukkan judul kuis">
+
+            <h3 style="margin-top:24px;">Soal</h3>
+            <div id="questionsContainer">
+                <!-- Soal akan ditambahkan di sini -->
+            </div>
+
+            <button class="btn" onclick="addQuestion()" style="margin-top:12px;">+ Tambah Soal</button>
+
+            <div style="margin-top:20px; text-align:right;">
+                <button class="btn" onclick="saveQuiz()">Simpan Kuis</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="lms-core.js"></script>
+    <script>
+        if (!requireRole('dosen')) {} // redirect if not dosen
+
+        let questionCount = 0;
+
+        async function init() {
+            const classes = await getClasses();
+            const select = document.getElementById('classSelect');
+            if (classes.length === 0) {
+                select.innerHTML = '<option value="">Tidak ada kelas tersedia</option>';
+            } else {
+                select.innerHTML = '<option value="">-- Pilih Kelas --</option>' +
+                    classes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+            }
+            // Tambah satu soal default
+            addQuestion();
+        }
+
+        function addQuestion() {
+            questionCount++;
+            const container = document.getElementById('questionsContainer');
+            const div = document.createElement('div');
+            div.className = 'question-block';
+            div.id = 'question-' + questionCount;
+            div.innerHTML = `
+                <div class="question-header">
+                    <strong>Soal #${questionCount}</strong>
+                    <button class="remove-btn" onclick="removeQuestion('${div.id}')">Hapus</button>
+                </div>
+                <input type="text" class="question-text" placeholder="Tulis pertanyaan...">
+                <div class="options">
+                    ${['A', 'B', 'C', 'D'].map(letter => `
+                        <div class="option-row">
+                            <input type="radio" name="correct-q${questionCount}" value="${letter}">
+                            <input type="text" class="option-text" placeholder="Opsi ${letter}">
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        window.removeQuestion = function(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+            // Update nomor
+            updateQuestionNumbers();
+        };
+
+        function updateQuestionNumbers() {
+            const questions = document.querySelectorAll('.question-block');
+            questions.forEach((q, idx) => {
+                q.querySelector('.question-header strong').textContent = `Soal #${idx+1}`;
+            });
+        }
+
+        window.saveQuiz = async function() {
+            const classId = document.getElementById('classSelect').value;
+            const title = document.getElementById('quizTitle').value.trim();
+
+            if (!classId) return showToast('Pilih kelas terlebih dahulu.', 'error');
+            if (!title) return showToast('Judul kuis harus diisi.', 'error');
+
+            // Kumpulkan soal
+            const questionBlocks = document.querySelectorAll('.question-block');
+            if (questionBlocks.length === 0) return showToast('Minimal satu soal harus ditambahkan.', 'error');
+
+            const questions = [];
+            let isValid = true;
+
+            questionBlocks.forEach((block, idx) => {
+                const questionText = block.querySelector('.question-text')?.value.trim();
+                const options = [];
+                const optionInputs = block.querySelectorAll('.option-text');
+                const correctRadio = block.querySelector(`input[name^="correct-q"]:checked`);
+
+                optionInputs.forEach(inp => options.push(inp.value.trim()));
+
+                if (!questionText || options.some(o => !o) || !correctRadio) {
+                    isValid = false;
+                } else {
+                    questions.push({
+                        question: questionText,
+                        options: options,
+                        answer: correctRadio.value
+                    });
+                }
+            });
+
+            if (!isValid) return showToast('Lengkapi semua pertanyaan, opsi, dan pilih jawaban benar.', 'error');
+
+            try {
+                await createQuiz({ classId, title, questions });
+                showToast('Kuis berhasil disimpan!', 'success');
+                setTimeout(() => {
+                    window.location.href = 'dashboard-dosen.html';
+                }, 1000);
+            } catch (e) {
+                console.error(e);
+                showToast('Gagal menyimpan kuis.', 'error');
+            }
+        };
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? '#00e676' : type === 'error' ? '#ff1744' : '#4d9fff';
+            toast.style.cssText = `
+                background: ${bgColor};
+                color: #000;
+                padding: 12px 20px;
+                margin-bottom: 8px;
+                font-weight: 500;
+                clip-path: polygon(3% 0%, 100% 0%, 100% 80%, 97% 100%, 0% 100%, 0% 20%);
+                animation: slideIn 0.3s ease;
+            `;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        init();
+    </script>
+</body>
+</html>

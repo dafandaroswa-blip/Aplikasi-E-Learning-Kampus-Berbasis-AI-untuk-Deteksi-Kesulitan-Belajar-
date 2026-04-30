@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kerjakan Kuis • LearnSona</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --p3-bg: #060b14;
+            --p3-card: #0f1b2e;
+            --p3-border: #1e3a5f;
+            --p3-blue: #4d9fff;
+            --p3-cyan: #00c8ff;
+            --p3-white: #e8f0ff;
+            --p3-gray: #8ea4c2;
+            --p3-green: #00e676;
+            --p3-yellow: #ffb300;
+            --p3-red: #ff1744;
+            --radius: 6px;
+            --clip-path: polygon(2% 0%, 100% 0%, 100% 96%, 98% 100%, 0% 100%, 0% 4%);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--p3-bg);
+            color: var(--p3-white);
+            min-height: 100vh;
+            padding: 28px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .back-link {
+            color: var(--p3-blue);
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-block;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        .back-link:hover { color: var(--p3-cyan); }
+        .card {
+            background: var(--p3-card);
+            border: 1px solid var(--p3-border);
+            padding: 32px;
+            clip-path: var(--clip-path);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            margin-bottom: 20px;
+        }
+        .quiz-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 22px;
+            margin-bottom: 24px;
+            letter-spacing: 1px;
+        }
+        .question-block {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .question-text {
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .option {
+            display: block;
+            padding: 10px 16px;
+            margin: 6px 0;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--p3-border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .option:hover {
+            background: rgba(77,159,255,0.1);
+            border-color: var(--p3-blue);
+        }
+        .option input[type="radio"] {
+            margin-right: 10px;
+            accent-color: var(--p3-blue);
+        }
+        .btn {
+            background: var(--p3-blue);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            clip-path: polygon(2% 0%, 100% 0%, 100% 80%, 98% 100%, 0% 100%, 0% 20%);
+            transition: 0.2s;
+            display: inline-block;
+            margin-top: 8px;
+        }
+        .btn:hover {
+            background: var(--p3-cyan);
+            box-shadow: 0 0 15px rgba(0,200,255,0.5);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--p3-blue);
+            color: var(--p3-blue);
+            padding: 10px 20px;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .result {
+            text-align: center;
+            padding: 20px;
+        }
+        .result h2 {
+            font-family: 'Orbitron', sans-serif;
+            margin-bottom: 12px;
+        }
+        .error-msg {
+            text-align: center;
+            color: var(--p3-red);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="dashboard-mahasiswa.html" class="back-link">← Kembali ke Dashboard</a>
+        <div id="quizContent"></div>
+    </div>
+
+    <script src="lms-core.js"></script>
+    <script>
+        // Pastikan mahasiswa yang login
+        if (!requireRole('mahasiswa')) {} // akan redirect jika bukan mahasiswa
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const quizId = urlParams.get('id');
+
+        (async function loadQuiz() {
+            if (!quizId) {
+                document.getElementById('quizContent').innerHTML = `
+                    <div class="card" style="text-align:center;">
+                        <h2>❌ Kuis Tidak Ditemukan</h2>
+                        <p style="color:var(--p3-gray);">Tidak ada ID kuis yang diberikan.</p>
+                        <a href="dashboard-mahasiswa.html" class="btn">Kembali ke Dashboard</a>
+                    </div>`;
+                return;
+            }
+
+            const quiz = await getQuizById(quizId);
+            if (!quiz) {
+                document.getElementById('quizContent').innerHTML = `
+                    <div class="card" style="text-align:center;">
+                        <h2>❌ Kuis Tidak Ditemukan</h2>
+                        <p style="color:var(--p3-gray);">Kuis dengan ID tersebut tidak tersedia.</p>
+                        <a href="dashboard-mahasiswa.html" class="btn">Kembali ke Dashboard</a>
+                    </div>`;
+                return;
+            }
+
+            renderQuiz(quiz);
+        })();
+
+        function renderQuiz(quiz) {
+            let html = `
+                <div class="card">
+                    <div class="quiz-title">📝 ${escapeHtml(quiz.title)}</div>
+                    <form id="quizForm">`;
+
+            quiz.questions.forEach((q, idx) => {
+                html += `<div class="question-block">
+                    <p class="question-text">${idx + 1}. ${escapeHtml(q.question)}</p>`;
+                if (q.options && Array.isArray(q.options)) {
+                    q.options.forEach((opt, i) => {
+                        const letter = String.fromCharCode(65 + i);
+                        html += `<label class="option">
+                            <input type="radio" name="q${idx}" value="${letter}"> ${letter}. ${escapeHtml(opt)}
+                        </label>`;
+                    });
+                }
+                html += `</div>`;
+            });
+
+            html += `
+                <button type="button" class="btn" onclick="submitQuiz()">Kirim Jawaban</button>
+                </form>
+            </div>`;
+
+            document.getElementById('quizContent').innerHTML = html;
+        }
+
+        window.submitQuiz = async function() {
+            const quiz = await getQuizById(quizId); // ambil ulang untuk jawaban benar
+            if (!quiz) return;
+
+            let correct = 0;
+            let allAnswered = true;
+
+            quiz.questions.forEach((q, idx) => {
+                const selected = document.querySelector(`input[name="q${idx}"]:checked`);
+                if (!selected) {
+                    allAnswered = false;
+                } else if (selected.value === q.answer) {
+                    correct++;
+                }
+            });
+
+            if (!allAnswered) {
+                // Highlight yang belum dijawab
+                document.querySelectorAll('.question-block').forEach((block, idx) => {
+                    const answered = document.querySelector(`input[name="q${idx}"]:checked`);
+                    if (!answered) {
+                        block.style.border = '1px solid var(--p3-red)';
+                        block.style.padding = '8px';
+                    }
+                });
+                alert('⚠️ Mohon jawab semua pertanyaan sebelum mengirim.');
+                return;
+            }
+
+            const total = quiz.questions.length;
+            const score = Math.round((correct / total) * 100);
+
+            // Simpan hasil kuis
+            const studentId = getCurrentUser().studentId;
+            await submitQuizAttempt(studentId, quizId, score);
+
+            // Tampilkan hasil
+            document.getElementById('quizContent').innerHTML = `
+                <div class="card result">
+                    <h2>✅ Kuis Selesai!</h2>
+                    <div style="font-size:48px; font-family:'Orbitron',sans-serif; margin:16px 0;">${score}</div>
+                    <p style="font-size:18px;">Jawaban Benar: ${correct} dari ${total}</p>
+                    <p style="color:var(--p3-gray); margin:16px 0;">Nilai ini akan masuk ke penilaian Anda.</p>
+                    <a href="dashboard-mahasiswa.html" class="btn">Kembali ke Dashboard</a>
+                </div>`;
+
+            // Log aktivitas
+            if (typeof logActivity === 'function') {
+                await logActivity(studentId, `Mengerjakan kuis "${quiz.title}" dengan skor ${score}`);
+            }
+        };
+    </script>
+</body>
+</html>

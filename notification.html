@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifikasi • LearnSona</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --p3-bg: #060b14;
+            --p3-card: #0f1b2e;
+            --p3-border: #1e3a5f;
+            --p3-blue: #4d9fff;
+            --p3-cyan: #00c8ff;
+            --p3-white: #e8f0ff;
+            --p3-gray: #8ea4c2;
+            --p3-red: #ff1744;
+            --p3-green: #00e676;
+            --p3-yellow: #ffb300;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--p3-bg);
+            color: var(--p3-white);
+            min-height: 100vh;
+            padding: 28px;
+            background: radial-gradient(circle at top, #0d1b33 0%, #060b14 70%);
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            color: var(--p3-cyan);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .back-link:hover {
+            color: var(--p3-white);
+        }
+        .page-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            margin-bottom: 28px;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .card {
+            background: var(--p3-card);
+            border: 1px solid var(--p3-border);
+            padding: 24px;
+            margin-bottom: 24px;
+            clip-path: polygon(1% 0%, 100% 0%, 100% 97%, 99% 100%, 0% 100%, 0% 3%);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .card h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+        .notif-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            background: rgba(255,255,255,0.03);
+            border-left: 4px solid var(--p3-red);
+            transition: 0.2s;
+        }
+        .notif-item.unread {
+            background: rgba(255,23,68,0.08);
+        }
+        .notif-item .icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        .notif-item .content {
+            flex: 1;
+        }
+        .notif-item .content strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+        .notif-item .content .timestamp {
+            font-size: 12px;
+            color: var(--p3-gray);
+        }
+        .notif-item .actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .btn {
+            background: var(--p3-blue);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+            clip-path: polygon(3% 0%, 100% 0%, 100% 80%, 97% 100%, 0% 100%, 0% 20%);
+            transition: 0.2s;
+        }
+        .btn:hover {
+            background: var(--p3-cyan);
+            box-shadow: 0 0 15px rgba(0,200,255,0.5);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--p3-blue);
+            color: var(--p3-blue);
+            padding: 7px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--p3-gray);
+        }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="dashboard-dosen.html" class="back-link">← Kembali ke Dashboard</a>
+        <h1 class="page-title">🔔 Notifikasi</h1>
+
+        <!-- Daftar Notifikasi -->
+        <div class="card">
+            <h3>Peringatan & Informasi</h3>
+            <div id="notifList">
+                <p style="text-align:center;">Memuat notifikasi...</p>
+            </div>
+        </div>
+
+        <!-- Kirim Notifikasi Manual (hanya untuk dosen) -->
+        <div class="card" id="sendNotifCard" style="display:none;">
+            <h3>📤 Kirim Notifikasi ke Mahasiswa</h3>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <select id="studentSelect" style="padding:10px;background:rgba(255,255,255,0.05);border:1px solid var(--p3-border);color:var(--p3-white);border-radius:4px;">
+                    <option value="">-- Pilih Mahasiswa --</option>
+                </select>
+                <textarea id="notifMessage" rows="3" placeholder="Tulis pesan notifikasi..." style="padding:10px;background:rgba(255,255,255,0.05);border:1px solid var(--p3-border);color:var(--p3-white);border-radius:4px;resize:vertical;"></textarea>
+                <button class="btn" onclick="sendManualNotification()">Kirim Notifikasi</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="lms-core.js"></script>
+    <script>
+        if (!isLoggedIn()) {
+            window.location.href = 'login.html';
+        }
+
+        const user = getCurrentUser();
+        let allNotifications = [];
+
+        async function init() {
+            try {
+                // Tampilkan form kirim notifikasi hanya untuk dosen
+                if (user && user.role === 'dosen') {
+                    document.getElementById('sendNotifCard').style.display = 'block';
+                    const students = await getStudents();
+                    const select = document.getElementById('studentSelect');
+                    select.innerHTML = '<option value="">-- Pilih Mahasiswa --</option>' +
+                        students.map(s => `<option value="${s.id}">${escapeHtml(s.name)} (${s.id}) - ${s.riskStatus || 'Aman'}</option>`).join('');
+                }
+
+                await loadNotifications();
+            } catch (e) {
+                console.error(e);
+                document.getElementById('notifList').innerHTML = '<p>Gagal memuat notifikasi.</p>';
+            }
+        }
+
+        async function loadNotifications() {
+            allNotifications = await getNotifications();
+            renderNotifications();
+        }
+
+        function renderNotifications() {
+            const container = document.getElementById('notifList');
+            if (!allNotifications || allNotifications.length === 0) {
+                container.innerHTML = '<div class="empty-state">📭 Belum ada notifikasi</div>';
+                return;
+            }
+            container.innerHTML = allNotifications.map(n => {
+                const dateStr = n.timestamp ? new Date(n.timestamp).toLocaleString('id-ID', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '-';
+                return `
+                <div class="notif-item ${n.status === 'unread' ? 'unread' : ''}">
+                    <div class="icon">🚨</div>
+                    <div class="content">
+                        <strong>${escapeHtml(n.message)}</strong>
+                        <div class="timestamp">${dateStr}</div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-outline" onclick="markAsRead('${n.id}')">Tandai Dibaca</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        window.markAsRead = function(notifId) {
+            // Sederhana: hapus dari tampilan lokal (Firebase update lebih rumit)
+            allNotifications = allNotifications.filter(n => n.id !== notifId);
+            renderNotifications();
+            showToast('Ditandai sudah dibaca', 'success');
+        };
+
+        window.sendManualNotification = async function() {
+            const studentId = document.getElementById('studentSelect').value;
+            const message = document.getElementById('notifMessage').value.trim();
+            if (!studentId || !message) {
+                showToast('Pilih mahasiswa dan isi pesan.', 'error');
+                return;
+            }
+            try {
+                await sendNotification(studentId, message);
+                showToast('Notifikasi terkirim!', 'success');
+                document.getElementById('notifMessage').value = '';
+                await loadNotifications();
+            } catch (e) {
+                showToast('Gagal mengirim notifikasi.', 'error');
+            }
+        };
+
+        function showToast(msg, type) {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                background: ${type === 'success' ? '#00e676' : type === 'error' ? '#ff1744' : '#4d9fff'};
+                color: #000; padding: 12px 20px; margin-bottom: 8px; font-weight: 500;
+                clip-path: polygon(3% 0%, 100% 0%, 100% 80%, 97% 100%, 0% 100%, 0% 20%);
+                animation: slideIn 0.3s ease;
+            `;
+            toast.textContent = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        init();
+    </script>
+</body>
+</html>

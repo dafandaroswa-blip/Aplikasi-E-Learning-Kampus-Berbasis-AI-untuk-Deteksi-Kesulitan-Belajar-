@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analitik • LearnSona</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js">
+    </script>
+    <style>
+        :root {
+            --p3-bg: #060b14;
+            --p3-card: #0f1b2e;
+            --p3-border: #1e3a5f;
+            --p3-blue: #4d9fff;
+            --p3-cyan: #00c8ff;
+            --p3-white: #e8f0ff;
+            --p3-gray: #8ea4c2;
+            --p3-green: #00e676;
+            --p3-yellow: #ffb300;
+            --p3-red: #ff1744;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--p3-bg);
+            color: var(--p3-white);
+            min-height: 100vh;
+            padding: 28px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 24px;
+            color: var(--p3-cyan);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .back-link:hover {
+            color: var(--p3-white);
+        }
+        .page-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            margin-bottom: 28px;
+            letter-spacing: 1px;
+        }
+        /* Ringkasan Statistik */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .stat-card {
+            background: var(--p3-card);
+            border: 1px solid var(--p3-border);
+            padding: 20px;
+            text-align: center;
+            clip-path: polygon(1% 0%, 100% 0%, 100% 97%, 99% 100%, 0% 100%, 0% 3%);
+        }
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--p3-gray);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        /* Grid Grafik */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+        .chart-card {
+            background: var(--p3-card);
+            border: 1px solid var(--p3-border);
+            padding: 24px;
+            clip-path: polygon(1% 0%, 100% 0%, 100% 97%, 99% 100%, 0% 100%, 0% 3%);
+        }
+        .chart-card h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: var(--p3-white);
+        }
+        canvas {
+            width: 100% !important;
+            max-height: 300px;
+        }
+        /* Filter */
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        select {
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--p3-border);
+            color: var(--p3-white);
+            font-size: 14px;
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Tombol Kembali -->
+    <a href="javascript:void(0)" onclick="goBack()" class="back-link">← Kembali ke Dashboard</a>
+    <h1 class="page-title">📈 Dashboard Analitik</h1>
+
+    <!-- Ringkasan Statistik -->
+    <div class="stats-grid" id="summaryStats"></div>
+
+    <!-- Filter Kelas (opsional) -->
+    <div class="filter-row">
+        <label style="font-size:14px;color:var(--p3-gray);">Filter Kelas:</label>
+        <select id="classFilter" onchange="refreshCharts()">
+            <option value="all">Semua Kelas</option>
+        </select>
+    </div>
+
+    <!-- Grafik -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3>📊 Progress vs Target</h3>
+            <canvas id="progressChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>🥧 Distribusi Status Risiko</h3>
+            <canvas id="riskPieChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>📈 Rata-rata Progress per Kelas</h3>
+            <canvas id="classProgressChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>🔑 Frekuensi Login Mingguan</h3>
+            <canvas id="loginChart"></canvas>
+        </div>
+    </div>
+
+    <script src="lms-core.js"></script>
+    <script>
+        // Cek login & role
+        if (!isLoggedIn()) {
+            window.location.href = 'login.html';
+        }
+
+        const user = getCurrentUser();
+        let allStudents = [];
+        let allClasses = [];
+        let currentClassFilter = 'all';
+        let progressChartInstance = null;
+        let riskPieChartInstance = null;
+        let classProgressChartInstance = null;
+        let loginChartInstance = null;
+
+        // Tombol kembali sesuai role
+        function goBack() {
+            if (user && user.role === 'dosen') {
+                window.location.href = 'dashboard-dosen.html';
+            } else {
+                window.location.href = 'dashboard-mahasiswa.html';
+            }
+        }
+
+        async function init() {
+            try {
+                allStudents = await getStudents();
+                allClasses = await getClasses();
+
+                // Isi filter kelas
+                const classSelect = document.getElementById('classFilter');
+                const uniqueClasses = [...new Set(allStudents.map(s => s.class).filter(Boolean))];
+                classSelect.innerHTML = '<option value="all">Semua Kelas</option>' +
+                    uniqueClasses.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+
+                renderSummaryStats();
+                refreshCharts();
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
+        }
+
+        function getFilteredStudents() {
+            if (currentClassFilter === 'all') return allStudents;
+            return allStudents.filter(s => s.class === currentClassFilter);
+        }
+
+        function renderSummaryStats() {
+            const filtered = getFilteredStudents();
+            const total = filtered.length;
+            const avgProgress = total > 0 ? Math.round(filtered.reduce((sum, s) => sum + (s.progress || 0), 0) / total) : 0;
+            const aman = filtered.filter(s => s.riskStatus === 'Aman').length;
+            const kritis = filtered.filter(s => s.riskStatus === 'Kritis').length;
+
+            document.getElementById('summaryStats').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${total}</div>
+                    <div class="stat-label">Total Mahasiswa</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color:var(--p3-blue);">${avgProgress}%</div>
+                    <div class="stat-label">Rata-rata Progress</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color:var(--p3-green);">${aman}</div>
+                    <div class="stat-label">Status Aman</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color:var(--p3-red);">${kritis}</div>
+                    <div class="stat-label">Status Kritis</div>
+                </div>
+            `;
+        }
+
+        function refreshCharts() {
+            currentClassFilter = document.getElementById('classFilter').value;
+            const filtered = getFilteredStudents();
+            renderSummaryStats();
+            renderProgressChart(filtered);
+            renderRiskPieChart(filtered);
+            renderClassProgressChart(filtered);
+            renderLoginChart(filtered);
+        }
+
+        function destroyChart(instance) {
+            if (instance) instance.destroy();
+        }
+
+        // 1. Progress vs Target (Line Chart)
+        function renderProgressChart(students) {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            destroyChart(progressChartInstance);
+            progressChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: students.map(s => s.name),
+                    datasets: [
+                        {
+                            label: 'Progress Mahasiswa',
+                            data: students.map(s => s.progress || 0),
+                            borderColor: '#4d9fff',
+                            backgroundColor: 'rgba(77,159,255,0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#4d9fff'
+                        },
+                        {
+                            label: 'Target Minimal (70%)',
+                            data: Array(students.length).fill(70),
+                            borderColor: '#ff1744',
+                            borderDash: [6, 4],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#8ea4c2' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            max: 100,
+                            grid: { color: '#1e3a5f' },
+                            ticks: { color: '#8ea4c2' }
+                        },
+                        x: {
+                            ticks: { color: '#8ea4c2', maxRotation: 45 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Distribusi Risiko (Pie Chart)
+        function renderRiskPieChart(students) {
+            const ctx = document.getElementById('riskPieChart').getContext('2d');
+            destroyChart(riskPieChartInstance);
+            const aman = students.filter(s => s.riskStatus === 'Aman').length;
+            const waspada = students.filter(s => s.riskStatus === 'Waspada').length;
+            const kritis = students.filter(s => s.riskStatus === 'Kritis').length;
+            riskPieChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Aman', 'Waspada', 'Kritis'],
+                    datasets: [{
+                        data: [aman, waspada, kritis],
+                        backgroundColor: ['#00e676', '#ffb300', '#ff1744'],
+                        borderColor: '#060b14',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#8ea4c2' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3. Rata-rata Progress per Kelas (Bar Chart)
+        function renderClassProgressChart(students) {
+            const ctx = document.getElementById('classProgressChart').getContext('2d');
+            destroyChart(classProgressChartInstance);
+            const classesMap = {};
+            students.forEach(s => {
+                const cls = s.class || 'Tanpa Kelas';
+                if (!classesMap[cls]) classesMap[cls] = { total: 0, count: 0 };
+                classesMap[cls].total += (s.progress || 0);
+                classesMap[cls].count += 1;
+            });
+            const labels = Object.keys(classesMap);
+            const data = labels.map(cls => Math.round(classesMap[cls].total / classesMap[cls].count));
+            classProgressChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Rata-rata Progress (%)',
+                        data: data,
+                        backgroundColor: '#4d9fff',
+                        borderColor: '#00c8ff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#8ea4c2' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            max: 100,
+                            grid: { color: '#1e3a5f' },
+                            ticks: { color: '#8ea4c2' }
+                        },
+                        x: {
+                            ticks: { color: '#8ea4c2' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 4. Frekuensi Login Mingguan (Bar Chart)
+        function renderLoginChart(students) {
+            const ctx = document.getElementById('loginChart').getContext('2d');
+            destroyChart(loginChartInstance);
+            const loginFreqs = [0, 1, 2, 3, 4, 5];
+            const distribution = loginFreqs.map(f => students.filter(s => (s.loginFrequency || 0) === f).length);
+            loginChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: loginFreqs.map(f => f + 'x'),
+                    datasets: [{
+                        label: 'Jumlah Mahasiswa',
+                        data: distribution,
+                        backgroundColor: '#00c8ff',
+                        borderColor: '#4d9fff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#8ea4c2' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#1e3a5f' },
+                            ticks: { color: '#8ea4c2', stepSize: 1 }
+                        },
+                        x: {
+                            ticks: { color: '#8ea4c2' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Jalankan
+        init();
+    </script>
+</body>
+</html>

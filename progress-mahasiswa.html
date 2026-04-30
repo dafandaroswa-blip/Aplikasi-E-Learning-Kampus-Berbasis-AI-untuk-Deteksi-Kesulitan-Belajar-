@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Saya • LearnSona</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --p3-bg: #060b14;
+            --p3-card: #0f1b2e;
+            --p3-border: #1e3a5f;
+            --p3-blue: #4d9fff;
+            --p3-cyan: #00c8ff;
+            --p3-white: #e8f0ff;
+            --p3-gray: #8ea4c2;
+            --p3-green: #00e676;
+            --p3-yellow: #ffb300;
+            --p3-red: #ff1744;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% 0%, #0d1b33, #060b14 70%);
+            color: var(--p3-white);
+            min-height: 100vh;
+            padding: 28px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--p3-cyan);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .card {
+            background: var(--p3-card);
+            border: 1px solid var(--p3-border);
+            padding: 28px;
+            margin-bottom: 24px;
+            clip-path: polygon(1% 0%, 100% 0%, 100% 97%, 99% 100%, 0% 100%, 0% 3%);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        h2,
+        h3 {
+            font-family: 'Orbitron', sans-serif;
+            margin-bottom: 16px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            clip-path: polygon(5% 0%, 95% 0%, 100% 30%, 100% 70%, 95% 100%, 5% 100%, 0% 70%, 0% 30%);
+        }
+        .badge.aman {
+            background: var(--p3-green);
+            color: #000;
+        }
+        .badge.waspada {
+            background: var(--p3-yellow);
+            color: #000;
+        }
+        .badge.kritis {
+            background: var(--p3-red);
+            color: #fff;
+        }
+        .progress-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 8px solid var(--p3-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        @media (max-width: 600px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="dashboard-mahasiswa.html" class="back-link">← Kembali ke Dashboard</a>
+        <div id="progressContent">Memuat data...</div>
+    </div>
+
+    <script src="lms-core.js"></script>
+    <script>
+        if (!requireRole('mahasiswa')) {} // redirect handled
+
+        (async function() {
+            const user = getCurrentUser();
+            if (!user || !user.studentId) {
+                window.location.href = 'login.html';
+                return;
+            }
+            const student = await getStudentById(user.studentId);
+            if (!student) {
+                document.getElementById('progressContent').innerHTML =
+                    '<div class="card">Data mahasiswa tidak ditemukan.</div>';
+                return;
+            }
+
+            const risk = calculateRisk(student);
+            const statusClass = risk.status.toLowerCase();
+            const percent = student.progress || 0;
+
+            let html = `
+            <div class="card" style="text-align:center;">
+                <h2>Progress ${escapeHtml(student.name)}</h2>
+                <div class="progress-circle">${percent}%</div>
+                <span class="badge ${statusClass}">${risk.status}</span>
+                <p style="margin-top:8px;">Risk Score: <strong>${risk.score}</strong></p>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <h3>📊 Detail</h3>
+                    <p>Nilai Tugas: <strong>${student.assignmentScore || 0}</strong></p>
+                    <p>Login/Minggu: <strong>${student.loginFrequency || 0}x</strong></p>
+                    <p>Kelas: <strong>${escapeHtml(student.class || '-')}</strong></p>
+                    <p>Login Terakhir: <strong>${student.lastLogin || '-'}</strong></p>
+                </div>
+                <div class="card">
+                    <h3>🧠 Indikator</h3>
+                    ${risk.indicators.map(i => `
+                        <div style="padding:8px; margin:4px 0; background:rgba(255,255,255,0.03); border-left:3px solid var(--p3-blue);">
+                            <strong>${escapeHtml(i.label)}</strong><br>
+                            <small>${escapeHtml(i.detail)}</small>
+                        </div>`).join('')}
+                </div>
+            </div>`;
+
+            document.getElementById('progressContent').innerHTML = html;
+        })();
+    </script>
+</body>
+</html>

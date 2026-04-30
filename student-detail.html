@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detail Mahasiswa • LearnSona</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --p3-bg: #060b14;
+            --p3-card: #0f1b2e;
+            --p3-border: #1e3a5f;
+            --p3-blue: #4d9fff;
+            --p3-cyan: #00c8ff;
+            --p3-white: #e8f0ff;
+            --p3-gray: #8ea4c2;
+            --p3-green: #00e676;
+            --p3-yellow: #ffb300;
+            --p3-red: #ff1744;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% 0%, #0d1b33, #060b14 70%);
+            color: var(--p3-white);
+            min-height: 100vh;
+            padding: 28px;
+        }
+        .container {
+            max-width: 750px;
+            margin: 0 auto;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--p3-cyan);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .card {
+            background: var(--p3-card);
+            border: 1px solid var(--p3-border);
+            padding: 28px;
+            margin-bottom: 24px;
+            clip-path: polygon(1% 0%, 100% 0%, 100% 97%, 99% 100%, 0% 100%, 0% 3%);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .student-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .student-avatar {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--p3-blue), var(--p3-cyan));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 28px;
+            color: #000;
+            clip-path: polygon(10% 0%, 90% 0%, 100% 25%, 100% 75%, 90% 100%, 10% 100%, 0% 75%, 0% 25%);
+            flex-shrink: 0;
+        }
+        .student-info h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+        .student-meta {
+            font-size: 14px;
+            color: var(--p3-gray);
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            clip-path: polygon(5% 0%, 95% 0%, 100% 30%, 100% 70%, 95% 100%, 5% 100%, 0% 70%, 0% 30%);
+        }
+        .badge.aman { background: var(--p3-green); color: #000; }
+        .badge.waspada { background: var(--p3-yellow); color: #000; }
+        .badge.kritis { background: var(--p3-red); color: #fff; animation: pulse-warning 1.5s infinite; }
+        @keyframes pulse-warning {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .info-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--p3-border);
+            padding: 12px;
+            text-align: center;
+            border-radius: 4px;
+        }
+        .info-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--p3-gray);
+            margin-bottom: 4px;
+        }
+        .info-value {
+            font-size: 22px;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .progress-bar {
+            height: 10px;
+            background: #1e2a3a;
+            border-radius: 2px;
+            margin: 12px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--p3-blue), var(--p3-cyan));
+            transition: width 0.6s;
+        }
+        .indicator-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.03);
+            border-left: 4px solid var(--p3-blue);
+        }
+        .indicator-item.danger { border-left-color: var(--p3-red); }
+        .indicator-item.warning { border-left-color: var(--p3-yellow); }
+        .indicator-item.safe { border-left-color: var(--p3-green); }
+        .indicator-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .indicator-content strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+        .indicator-content p {
+            font-size: 13px;
+            color: var(--p3-gray);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="dashboard-dosen.html" class="back-link">← Kembali ke Dashboard</a>
+        <div id="detailContainer">
+            <div class="card" style="text-align:center;">Memuat data mahasiswa...</div>
+        </div>
+    </div>
+
+    <script src="lms-core.js"></script>
+    <script>
+        if (!isLoggedIn()) {
+            window.location.href = 'login.html';
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const studentId = params.get('id');
+
+        if (!studentId) {
+            document.getElementById('detailContainer').innerHTML = `
+                <div class="card" style="text-align:center;">
+                    <h2>Mahasiswa tidak ditemukan</h2>
+                    <p>Parameter ID tidak disertakan.</p>
+                    <a href="dashboard-dosen.html" class="btn" style="display:inline-block; margin-top:12px;">Kembali</a>
+                </div>`;
+        } else {
+            loadStudentDetail(studentId);
+        }
+
+        async function loadStudentDetail(id) {
+            try {
+                const student = await getStudentById(id);
+                if (!student) {
+                    document.getElementById('detailContainer').innerHTML = `
+                        <div class="card" style="text-align:center;">
+                            <h2>Mahasiswa tidak ditemukan</h2>
+                            <p>ID "${escapeHtml(id)}" tidak terdaftar.</p>
+                            <a href="dashboard-dosen.html" class="btn" style="display:inline-block; margin-top:12px;">Kembali</a>
+                        </div>`;
+                    return;
+                }
+
+                const risk = calculateRisk(student);
+                const statusClass = risk.status.toLowerCase();
+                const progressColor = student.progress >= 70 ? 'var(--p3-green)' : student.progress >= 50 ? 'var(--p3-yellow)' : 'var(--p3-red)';
+
+                let html = `
+                <div class="card">
+                    <div class="student-header">
+                        <div class="student-avatar">${student.name.charAt(0).toUpperCase()}</div>
+                        <div class="student-info">
+                            <h2>${escapeHtml(student.name)}</h2>
+                            <div class="student-meta">
+                                <span>ID: ${escapeHtml(student.id)}</span>
+                                <span>Kelas: ${escapeHtml(student.class || 'Belum ditentukan')}</span>
+                                <span class="badge ${statusClass}">${risk.status}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Progress</div>
+                            <div class="info-value" style="color:${progressColor}">${student.progress || 0}%</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Nilai Tugas</div>
+                            <div class="info-value">${student.assignmentScore || 0}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Login/Minggu</div>
+                            <div class="info-value">${student.loginFrequency || 0}x</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Risk Score</div>
+                            <div class="info-value" style="color:${risk.score > 60 ? 'var(--p3-red)' : risk.score > 30 ? 'var(--p3-yellow)' : 'var(--p3-green)'}">${risk.score}</div>
+                        </div>
+                    </div>
+
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:${student.progress || 0}%;"></div>
+                    </div>
+
+                    <h3 style="font-family:'Orbitron',sans-serif; margin:20px 0 12px;">🧠 Indikator Risiko</h3>
+                `;
+
+                // Render minimal 3 indikator (sudah dijamin oleh calculateRisk)
+                risk.indicators.forEach(ind => {
+                    let cls = 'safe';
+                    let icon = '✅';
+                    if (ind.label.includes('Rendah') || ind.label.includes('Kritis')) {
+                        cls = 'danger';
+                        icon = '🔴';
+                    } else if (ind.label.includes('Di Bawah') || ind.label.includes('Perlu Ditingkatkan')) {
+                        cls = 'warning';
+                        icon = '🟡';
+                    }
+                    html += `
+                        <div class="indicator-item ${cls}">
+                            <div class="indicator-icon">${icon}</div>
+                            <div class="indicator-content">
+                                <strong>${escapeHtml(ind.label)}</strong>
+                                <p>${escapeHtml(ind.detail)}</p>
+                            </div>
+                        </div>`;
+                });
+
+                // Riwayat intervensi (jika ada)
+                html += `<h3 style="font-family:'Orbitron',sans-serif; margin:20px 0 12px;">📋 Riwayat Intervensi</h3>`;
+                const interventions = await getInterventions();
+                const studentInterventions = interventions.filter(i => i.student_id === id);
+                if (studentInterventions.length > 0) {
+                    studentInterventions.forEach(i => {
+                        html += `<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05);">${i.date} - ${escapeHtml(i.action)}: ${escapeHtml(i.notes)}</div>`;
+                    });
+                } else {
+                    html += `<p style="color:var(--p3-gray);">Belum ada intervensi untuk mahasiswa ini.</p>`;
+                }
+
+                html += `</div>`;
+                document.getElementById('detailContainer').innerHTML = html;
+
+            } catch (e) {
+                console.error(e);
+                document.getElementById('detailContainer').innerHTML = `
+                    <div class="card" style="text-align:center;">
+                        <h2>Gagal memuat data</h2>
+                        <p>${escapeHtml(e.message)}</p>
+                    </div>`;
+            }
+        }
+    </script>
+</body>
+</html>
