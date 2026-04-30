@@ -190,6 +190,77 @@ async function addMaterial(mat) {
   return newMat;
 }
 
+// ---------- ASSIGNMENTS ----------
+async function getAssignments() {
+  if (useFirebase) {
+    const snap = await db.ref('assignments').once('value');
+    return snap.val() ? Object.values(snap.val()) : [];
+  }
+  return JSON.parse(localStorage.getItem('ls_assignments') || '[]');
+}
+
+async function addAssignment(task) {
+  const newTask = {
+    id: 'T' + Date.now(),
+    classId: task.classId,
+    title: task.title,
+    description: task.description || '',
+    dueDate: task.dueDate,
+    maxScore: Number(task.maxScore) || 100,
+    createdAt: new Date().toISOString()
+  };
+  if (useFirebase) {
+    const ref = db.ref('assignments').push();
+    newTask.id = ref.key;
+    await ref.set(newTask);
+  } else {
+    const tasks = JSON.parse(localStorage.getItem('ls_assignments') || '[]');
+    tasks.push(newTask);
+    localStorage.setItem('ls_assignments', JSON.stringify(tasks));
+  }
+  return newTask;
+}
+
+async function getAssignmentSubmissions(studentId) {
+  if (useFirebase) {
+    const snap = await db.ref('assignmentSubmissions').orderByChild('studentId').equalTo(studentId).once('value');
+    return snap.val() ? Object.values(snap.val()) : [];
+  }
+  return JSON.parse(localStorage.getItem('ls_assignmentSubmissions') || '[]')
+    .filter(s => s.studentId === studentId);
+}
+
+async function submitAssignment(studentId, assignmentId, answerUrl, note = '') {
+  const submissions = await getAssignmentSubmissions(studentId);
+  const existing = submissions.find(s => s.assignmentId === assignmentId);
+  const rec = {
+    id: existing?.id || 'S' + Date.now(),
+    studentId,
+    assignmentId,
+    answerUrl,
+    note,
+    status: 'submitted',
+    submittedAt: new Date().toISOString()
+  };
+  if (useFirebase) {
+    if (existing?.id) {
+      const snap = await db.ref('assignmentSubmissions').orderByChild('id').equalTo(existing.id).once('value');
+      const key = snap.val() ? Object.keys(snap.val())[0] : null;
+      if (key) await db.ref('assignmentSubmissions/' + key).set(rec);
+      else await db.ref('assignmentSubmissions').push(rec);
+    } else {
+      await db.ref('assignmentSubmissions').push(rec);
+    }
+  } else {
+    let all = JSON.parse(localStorage.getItem('ls_assignmentSubmissions') || '[]');
+    const idx = all.findIndex(s => s.id === rec.id);
+    if (idx >= 0) all[idx] = rec;
+    else all.push(rec);
+    localStorage.setItem('ls_assignmentSubmissions', JSON.stringify(all));
+  }
+  return rec;
+}
+
 async function enrollStudent(studentId, classId) {
   const student = await getStudentById(studentId);
   const cls = await getClassById(classId);
@@ -462,6 +533,8 @@ async function seedData() {
       localStorage.setItem('ls_students', JSON.stringify(arr));
       localStorage.setItem('ls_classes', JSON.stringify([]));
       localStorage.setItem('ls_materials', JSON.stringify([]));
+      localStorage.setItem('ls_assignments', JSON.stringify([]));
+      localStorage.setItem('ls_assignmentSubmissions', JSON.stringify([]));
       localStorage.setItem('ls_enrollments', JSON.stringify({}));
       localStorage.setItem('ls_notifications', JSON.stringify([]));
       localStorage.setItem('ls_interventions', JSON.stringify([]));

@@ -228,6 +228,29 @@
             background: rgba(255,255,255,0.03);
             border-left: 3px solid var(--p3-cyan);
         }
+        .task-item {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .task-item:last-child { border-bottom: none; }
+        .task-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 6px 0;
+            color: var(--p3-gray);
+            font-size: 12px;
+        }
+        .task-status {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .task-status.submitted { background: rgba(0,230,118,0.18); color: var(--p3-green); }
+        .task-status.pending { background: rgba(255,179,0,0.18); color: var(--p3-yellow); }
+        .task-status.late { background: rgba(255,23,68,0.18); color: var(--p3-red); }
         /* MODAL */
         .modal {
             position: fixed;
@@ -352,12 +375,15 @@
         const myMaterials = myClassId ? allMaterials.filter(m => m.classId === myClassId) : [];
         const allQuizzes = await getQuizzes();
         const myQuizzes = myClassId ? allQuizzes.filter(q => q.classId === myClassId) : [];
+        const allAssignments = await getAssignments();
+        const myAssignments = myClassId ? allAssignments.filter(t => t.classId === myClassId) : [];
+        const mySubmissions = await getAssignmentSubmissions(student.id);
         const logs = await getStudentLogs(student.id);
         const interventions = await getInterventionsForStudent(student.id);
 
         // Render
         document.getElementById('welcomeText').textContent = `👋 ${student.name}`;
-        renderFullDashboard(student, risk, leadTimeWarning, myClass, myMaterials, myQuizzes, logs, interventions, classes, enrollments);
+        renderFullDashboard(student, risk, leadTimeWarning, myClass, myMaterials, myQuizzes, myAssignments, mySubmissions, logs, interventions, classes, enrollments);
     })();
 
     async function getStudentLogs(studentId) {
@@ -378,10 +404,45 @@
         return all.filter(i => i.student_id === studentId);
     }
 
-    function renderFullDashboard(student, risk, leadTimeWarning, myClass, materials, quizzes, logs, interventions, allClasses, enrollments) {
+    function renderAssignments(assignments, submissions) {
+        if (assignments.length === 0) {
+            return '<p style="color:var(--p3-gray);">Belum ada tugas untuk kelas ini.</p>';
+        }
+        const submissionMap = new Map(submissions.map(s => [s.assignmentId, s]));
+        return [...assignments]
+            .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+            .map(t => {
+                const submission = submissionMap.get(t.id);
+                const isLate = !submission && t.dueDate && new Date(t.dueDate + 'T23:59:59') < new Date();
+                const statusClass = submission ? 'submitted' : isLate ? 'late' : 'pending';
+                const statusText = submission ? 'Terkumpul' : isLate ? 'Terlambat' : 'Belum dikumpulkan';
+                return `
+                    <div class="task-item">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+                            <strong>${escapeHtml(t.title)}</strong>
+                            <span class="task-status ${statusClass}">${statusText}</span>
+                        </div>
+                        <div class="task-meta">
+                            <span>Deadline: ${escapeHtml(t.dueDate || '-')}</span>
+                            <span>Maks: ${t.maxScore || 100}</span>
+                        </div>
+                        ${t.description ? `<p style="font-size:13px;color:var(--p3-gray);margin-bottom:8px;">${escapeHtml(t.description)}</p>` : ''}
+                        ${submission ? `
+                            <small style="color:var(--p3-dim);display:block;margin-bottom:8px;">Dikirim: ${new Date(submission.submittedAt).toLocaleString('id-ID')}</small>
+                            <a href="${escapeHtml(submission.answerUrl)}" target="_blank" rel="noopener" class="btn-outline" style="font-size:11px;text-decoration:none;">Lihat Jawaban</a>
+                            <button class="btn-outline" style="font-size:11px;margin-left:6px;" onclick="showSubmitAssignmentModal('${escapeHtml(t.id)}')">Ubah</button>
+                        ` : `<button class="btn-outline" style="font-size:11px;" onclick="showSubmitAssignmentModal('${escapeHtml(t.id)}')">Kumpulkan</button>`}
+                    </div>`;
+            }).join('');
+    }
+
+    function renderFullDashboard(student, risk, leadTimeWarning, myClass, materials, quizzes, assignments, submissions, logs, interventions, allClasses, enrollments) {
         const statusClass = risk.status.toLowerCase();
         const progressPercent = student.progress || 0;
         const availableClasses = allClasses.filter(c => !enrollments[student.id] || enrollments[student.id] !== c.id);
+        const submittedAssignmentIds = new Set(submissions.map(s => s.assignmentId));
+        const pendingAssignments = assignments.filter(t => !submittedAssignmentIds.has(t.id));
+        const nearestDue = [...pendingAssignments].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))[0];
 
         // Rekomendasi AI berdasarkan indikator
         const recommendations = [];
@@ -496,6 +557,13 @@
                         `).join('') : '<p style="color:var(--p3-gray);">Belum ada kuis.</p>'}
                     </div>
 
+                    <!-- TUGAS -->
+                    <div class="card">
+                        <h3>Tugas & Deadline</h3>
+                        ${nearestDue ? `<p style="font-size:12px;color:var(--p3-yellow);margin-bottom:8px;">Deadline terdekat: ${escapeHtml(nearestDue.title)} (${escapeHtml(nearestDue.dueDate)})</p>` : ''}
+                        ${renderAssignments(assignments, submissions)}
+                    </div>
+
                     <!-- LOG AKTIVITAS -->
                     <div class="card">
                         <h3>🕒 Aktivitas Terakhir</h3>
@@ -528,6 +596,8 @@
         window._student = student;
         window._allClasses = allClasses;
         window._enrollments = enrollments;
+        window._assignments = assignments;
+        window._submissions = submissions;
     }
 
     // ---------- MODAL GABUNG KELAS ----------
@@ -579,6 +649,59 @@
             setTimeout(() => location.reload(), 600);
         } catch (e) {
             showToast('Gagal: ' + e.message, 'error');
+        }
+    };
+
+    // ---------- MODAL KUMPULKAN TUGAS ----------
+    window.showSubmitAssignmentModal = function(assignmentId) {
+        const task = (window._assignments || []).find(t => t.id === assignmentId);
+        if (!task) return;
+        const existingSubmission = (window._submissions || []).find(s => s.assignmentId === assignmentId);
+        const existing = document.querySelector('.modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-box">
+                <h3 style="font-family:'Orbitron',sans-serif; margin-bottom:10px;">Kumpulkan Tugas</h3>
+                <p style="margin-bottom:8px;"><strong>${escapeHtml(task.title)}</strong></p>
+                <p style="font-size:12px;color:var(--p3-gray);margin-bottom:12px;">Deadline: ${escapeHtml(task.dueDate || '-')}</p>
+                <label style="font-size:12px;color:var(--p3-gray);">Link jawaban</label>
+                <input type="url" id="assignmentAnswerUrl" placeholder="https://..." value="${escapeHtml(existingSubmission?.answerUrl || '')}">
+                <label style="font-size:12px;color:var(--p3-gray);">Catatan opsional</label>
+                <input type="text" id="assignmentNote" placeholder="Catatan untuk dosen" value="${escapeHtml(existingSubmission?.note || '')}">
+                <div style="display:flex; gap:10px; margin-top:16px;">
+                    <button class="btn" onclick="submitAssignmentFromModal('${escapeHtml(assignmentId)}')">Kirim</button>
+                    <button class="btn-outline" onclick="this.closest('.modal').remove()">Batal</button>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+    };
+
+    window.submitAssignmentFromModal = async function(assignmentId) {
+        const answerUrl = document.getElementById('assignmentAnswerUrl')?.value.trim();
+        const note = document.getElementById('assignmentNote')?.value.trim() || '';
+        if (!answerUrl) {
+            showToast('Link jawaban wajib diisi.', 'error');
+            return;
+        }
+        try {
+            const parsedUrl = new URL(answerUrl);
+            if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('invalid');
+        } catch (_) {
+            showToast('Gunakan link jawaban yang valid.', 'error');
+            return;
+        }
+        try {
+            await submitAssignment(window._student.id, assignmentId, answerUrl, note);
+            await logActivity(window._student.id, 'Mengumpulkan tugas');
+            const modal = document.querySelector('.modal');
+            if (modal) modal.remove();
+            showToast('Tugas berhasil dikumpulkan!', 'success');
+            setTimeout(() => location.reload(), 600);
+        } catch (e) {
+            showToast('Gagal mengumpulkan tugas: ' + e.message, 'error');
         }
     };
 

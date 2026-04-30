@@ -536,6 +536,24 @@
                 </div>
             </div>
 
+            <!-- ========== BUAT TUGAS ========== -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Buat Tugas & Deadline</h3>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <select id="taskClassSelect">
+                        <option value="">-- Pilih Kelas --</option>
+                    </select>
+                    <input type="date" id="taskDueDate">
+                    <input type="text" id="taskTitle" placeholder="Judul tugas">
+                    <input type="number" id="taskMaxScore" min="1" max="100" value="100" placeholder="Nilai maksimum">
+                </div>
+                <textarea id="taskDescription" placeholder="Instruksi tugas..." style="width:100%;margin-top:12px;padding:12px;background:rgba(255,255,255,0.05);border:1px solid var(--p3-border);color:var(--p3-white);border-radius:4px;font-family:'Inter',sans-serif;min-height:70px;"></textarea>
+                <button class="btn" onclick="createAssignmentFromForm()" style="margin-top:12px;">Publikasikan Tugas</button>
+                <div id="assignmentList" style="margin-top:16px;"></div>
+            </div>
+
             <!-- ========== AKSI CEPAT ========== -->
             <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end;">
                 <a href="quiz-editor.html" class="btn" style="background:var(--p3-cyan);">📝 Buat Kuis</a>
@@ -572,6 +590,7 @@
         // State
         let allStudents = [];
         let allClasses = [];
+        let allAssignments = [];
         let sortCol = 'name';
         let sortAsc = true;
         let searchTimeout = null;
@@ -580,6 +599,7 @@
             try {
                 allStudents = await getStudents();
                 allClasses = await getClasses();
+                allAssignments = await getAssignments();
 
                 // Pastikan setiap student memiliki riskStatus
                 allStudents = allStudents.map(s => {
@@ -597,8 +617,10 @@
                 renderStats();
                 renderTable();
                 renderClassList();
+                renderAssignmentList();
                 populateClassFilter();
                 populateMatClassSelect();
+                populateTaskClassSelect();
             } catch (error) {
                 console.error('Error loading dashboard:', error);
                 showToast('Gagal memuat data. Silakan refresh halaman.', 'error');
@@ -753,6 +775,12 @@
                 allClasses.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
         }
 
+        function populateTaskClassSelect() {
+            const sel = document.getElementById('taskClassSelect');
+            sel.innerHTML = '<option value="">-- Pilih Kelas --</option>' +
+                allClasses.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+        }
+
         // ========== MODAL BUAT KELAS ==========
         function openCreateClassModal() {
             document.getElementById('createClassModal').style.display = 'flex';
@@ -784,6 +812,7 @@
                 allClasses = await getClasses();
                 renderClassList();
                 populateMatClassSelect();
+                populateTaskClassSelect();
                 populateClassFilter();
             } catch (error) {
                 console.error('Error creating class:', error);
@@ -800,6 +829,7 @@
                     allClasses = await getClasses();
                     renderClassList();
                     populateMatClassSelect();
+                    populateTaskClassSelect();
                     populateClassFilter();
                 } catch (error) {
                     showToast('Gagal menghapus kelas.', 'error');
@@ -864,6 +894,55 @@
             }
         }
 
+        // ========== BUAT TUGAS ==========
+        async function createAssignmentFromForm() {
+            const classId = document.getElementById('taskClassSelect').value;
+            const title = document.getElementById('taskTitle').value.trim();
+            const description = document.getElementById('taskDescription').value.trim();
+            const dueDate = document.getElementById('taskDueDate').value;
+            const maxScore = document.getElementById('taskMaxScore').value;
+
+            if (!classId || !title || !dueDate) {
+                showToast('Kelas, judul, dan deadline wajib diisi.', 'error');
+                return;
+            }
+
+            try {
+                await addAssignment({ classId, title, description, dueDate, maxScore });
+                showToast(`Tugas "${title}" berhasil dipublikasikan!`, 'success');
+                document.getElementById('taskTitle').value = '';
+                document.getElementById('taskDescription').value = '';
+                document.getElementById('taskDueDate').value = '';
+                document.getElementById('taskMaxScore').value = '100';
+                allAssignments = await getAssignments();
+                renderAssignmentList();
+            } catch (error) {
+                showToast('Gagal membuat tugas.', 'error');
+            }
+        }
+
+        function renderAssignmentList() {
+            const container = document.getElementById('assignmentList');
+            if (!container) return;
+            const latest = [...allAssignments]
+                .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+                .slice(0, 5);
+            if (latest.length === 0) {
+                container.innerHTML = '<p style="color:var(--p3-gray);">Belum ada tugas dipublikasikan.</p>';
+                return;
+            }
+            container.innerHTML = latest.map(t => {
+                const cls = allClasses.find(c => c.id === t.classId);
+                return `
+                    <div class="class-item">
+                        <div class="class-info">
+                            <strong>${escapeHtml(t.title)}</strong>
+                            <small style="color:var(--p3-gray);display:block;">${escapeHtml(cls?.name || 'Kelas')} - Deadline ${escapeHtml(t.dueDate || '-')} - Maks ${t.maxScore || 100}</small>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
         // ========== TOAST ==========
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
@@ -887,6 +966,7 @@
         window.createClassPrompt = openCreateClassModal;
         window.deleteClass = deleteClassConfirm;
         window.uploadMaterial = uploadMaterial;
+        window.createAssignmentFromForm = createAssignmentFromForm;
         window.sortTable = sortTable;
         window.onSearch = onSearch;
         window.viewClassStudents = viewClassStudents;
